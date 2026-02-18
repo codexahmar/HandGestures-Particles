@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Aetheris - Interactive 3D Particle System with Hand Gesture Control">
+    <title>Aetheris | Interactive 3D Particle System</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <!-- MediaPipe Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+</head>
+
+<body>
+    <!-- Main Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- UI Layer -->
+    <div id="ui-layer">
+        <!-- Header -->
+        <header class="header-bar">
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2"
+                            opacity="0.3" />
+                        <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="2"
+                            opacity="0.5" />
+                        <circle cx="50" cy="50" r="15" fill="currentColor" opacity="0.8" />
+                        <line x1="50" y1="5" x2="50" y2="25" stroke="currentColor" stroke-width="2" opacity="0.5" />
+                        <line x1="50" y1="75" x2="50" y2="95" stroke="currentColor" stroke-width="2" opacity="0.5" />
+                        <line x1="5" y1="50" x2="25" y2="50" stroke="currentColor" stroke-width="2" opacity="0.5" />
+                        <line x1="75" y1="50" x2="95" y2="50" stroke="currentColor" stroke-width="2" opacity="0.5" />
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1 class="logo-title">AETHERIS</h1>
+                    <p class="logo-subtitle">Quantum Particle Engine</p>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="stat-item">
+                    <span class="stat-label">FPS</span>
+                    <span class="stat-value" id="fps-counter">60</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Particles</span>
+                    <span class="stat-value" id="particle-count">15K</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Control Panel -->
+        <div class="glass-panel control-panel">
+            <div class="panel-header">
+                <h2>Control Matrix</h2>
+                <button class="collapse-btn" id="collapse-btn" aria-label="Collapse panel">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="panel-content" id="panel-content">
+                <!-- Template Selection -->
+                <div class="control-group">
+                    <label for="template-select">
+                        <span class="label-icon">◈</span>
+                        Geometry Template
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="template-select" class="styled-select">
+                            <option value="galaxy">🌌 Galaxy Spiral</option>
+                            <option value="heart">💫 Heart Nebula</option>
+                            <option value="flower">🌸 Quantum Flower</option>
+                            <option value="saturn">🪐 Saturn System</option>
+                            <option value="fireworks">✨ Fireworks</option>
+                            <option value="spiral">🌀 Golden Spiral</option>
+                            <option value="wave">〰️ Wave Grid</option>
+                            <option value="dna">🧬 DNA Helix</option>
+                            <option value="torus">⭕ Torus Ring</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Glow Intensity -->
+                <div class="control-group">
+                    <label for="glow-slider">
+                        <span class="label-icon">☀</span>
+                        Glow Intensity
+                        <span class="value-display" id="glow-value">1.5</span>
+                    </label>
+                    <input type="range" id="glow-slider" class="styled-slider" min="0.3" max="3.0" step="0.1"
+                        value="1.5">
+                </div>
+
+                <!-- Particle Scale -->
+                <div class="control-group">
+                    <label for="size-slider">
+                        <span class="label-icon">⚫</span>
+                        Particle Scale
+                        <span class="value-display" id="size-value">1.0</span>
+                    </label>
+                    <input type="range" id="size-slider" class="styled-slider" min="0.1" max="5.0" step="0.1"
+                        value="1.0">
+                </div>
+
+                <!-- Animation Speed -->
+                <div class="control-group">
+                    <label for="speed-slider">
+                        <span class="label-icon">⚡</span>
+                        Animation Speed
+                        <span class="value-display" id="speed-value">1.0</span>
+                    </label>
+                    <input type="range" id="speed-slider" class="styled-slider" min="0.1" max="3.0" step="0.1"
+                        value="1.0">
+                </div>
+
+                <!-- Color Controls -->
+                <div class="control-group">
+                    <label>
+                        <span class="label-icon">🎨</span>
+                        Color Palette
+                    </label>
+                    <div class="color-palette">
+                        <input type="color" id="color-primary" class="color-picker" value="#00f2ff"
+                            title="Primary Color">
+                        <input type="color" id="color-secondary" class="color-picker" value="#ff00ff"
+                            title="Secondary Color">
+                        <input type="color" id="color-accent" class="color-picker" value="#ffaa00" title="Accent Color">
+                        <button class="color-btn random-color" id="random-color" title="Random Colors">
+                            🎲
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Toggle Controls -->
+                <div class="control-group toggle-group">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="rotate-toggle" class="styled-checkbox" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-text">Auto-Rotation</span>
+                    </label>
+
+                    <label class="toggle-label">
+                        <input type="checkbox" id="trails-toggle" class="styled-checkbox">
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-text">Motion Trails</span>
+                    </label>
+
+                    <label class="toggle-label">
+                        <input type="checkbox" id="bloom-toggle" class="styled-checkbox" checked>
+                        <span class="toggle-switch"></span>
+                        <span class="toggle-text">Bloom Effect</span>
+                    </label>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="button-group">
+                    <button class="action-btn primary-btn" id="reset-btn">
+                        <span class="btn-icon">⟲</span>
+                        Reset System
+                    </button>
+                    <button class="action-btn secondary-btn" id="screenshot-btn">
+                        <span class="btn-icon">📷</span>
+                        Screenshot
+                    </button>
+                    <button class="action-btn secondary-btn" id="fullscreen-btn">
+                        <span class="btn-icon">⛶</span>
+                        Fullscreen
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gesture Indicator -->
+        <div class="gesture-indicator">
+            <div class="indicator-header">
+                <div class="status-dot" id="status-dot"></div>
+                <span class="indicator-title">Hand Tracking</span>
+            </div>
+            <p class="gesture-text" id="gesture-text">Initializing camera...</p>
+            <div class="gesture-help">
+                <div class="help-item">✋ Open Palm - Expand</div>
+                <div class="help-item">✊ Fist - Contract</div>
+                <div class="help-item">🤏 Pinch - Color Shift</div>
+                <div class="help-item">👈👉 Swipe - Change Template</div>
+            </div>
+        </div>
+
+        <!-- Video Preview -->
+        <div class="video-container">
+            <video id="video-preview" autoplay playsinline muted></video>
+            <div class="video-controls">
+                <button class="video-toggle" id="video-toggle" title="Toggle Camera">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M2 5C2 3.89543 2.89543 3 4 3H12C13.1046 3 14 3.89543 14 5V15C14 16.1046 13.1046 17 12 17H4C2.89543 17 2 16.1046 2 15V5Z" />
+                        <path d="M14 7L18 4V16L14 13V7Z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div class="loading-screen" id="loading-screen">
+            <div class="loading-content">
+                <div class="loading-spinner">
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                </div>
+                <h2 class="loading-title">AETHERIS</h2>
+                <p class="loading-text">Initializing quantum systems...</p>
+                <div class="loading-bar">
+                    <div class="loading-progress" id="loading-progress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Failsafe: Hide loading screen after 3 seconds regardless of initialization
+        setTimeout(() => {
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen && !loadingScreen.classList.contains('hidden')) {
+                console.warn('Loading timeout - forcing hide');
+                loadingScreen.classList.add('hidden');
+            }
+        }, 3000);
+
+        // Add global error handler
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.classList.add('hidden');
+            }
+        });
+    </script>
+    <script type="module" src="config.js"></script>
+    <script type="module" src="shaders.js"></script>
+    <script type="module" src="templates.js"></script>
+    <script type="module" src="handTracking.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
