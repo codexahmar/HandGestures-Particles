@@ -1,12 +1,12 @@
 // ========================================
-// AETHERIS - Shader Module
+// AETHERIS - High-Performance GLSL Shaders
 // ========================================
 
 import * as THREE from 'three';
 
 /**
- * Vertex Shader
- * Handles particle positioning, morphing, and animation
+ * Optimized Vertex Shader
+ * Blazing fast 60+ FPS calculations: smooth morphing, orbital motion, audio pulses, and hand displacement
  */
 export const vertexShader = `
     uniform float uTime;
@@ -15,153 +15,151 @@ export const vertexShader = `
     uniform float uExpansion;
     uniform float uSpeed;
     
+    // Hand force interaction
+    uniform vec3 uHandPos;
+    uniform float uHandForce;
+    uniform float uHandActive;
+    
+    // Shockwave ripple
+    uniform float uShockwaveProgress;
+    uniform vec3 uShockwaveOrigin;
+    
+    // Audio Reactivity
+    uniform float uAudioBass;
+    uniform float uAudioTreble;
+    
     attribute vec3 targetPosition;
     attribute vec3 color;
     
     varying vec3 vColor;
-    varying float vDistance;
     varying float vAlpha;
     
     void main() {
         vColor = color;
         
-        // Morphing between current and target position
+        // 1. Smooth Geometric Morphing
         vec3 pos = mix(position, targetPosition, uMorph);
         
-        // Hand interaction: Expansion/Contraction
+        // 2. Global Expansion
         pos *= (1.0 + uExpansion);
         
-        // Wave motion for organic feel
-        float wave = sin(uTime * uSpeed * 0.5 + pos.x * 0.2) * 0.1;
-        pos.y += wave;
-        pos.z += cos(uTime * uSpeed * 0.5 + pos.y * 0.2) * 0.1;
+        // 3. Audio Bass Pulse
+        pos *= (1.0 + uAudioBass * 0.2);
         
-        // Slight rotation animation
-        float angle = uTime * uSpeed * 0.1;
-        float cosA = cos(angle);
-        float sinA = sin(angle);
-        mat2 rotation = mat2(cosA, -sinA, sinA, cosA);
-        pos.xz *= rotation;
+        // 4. Lightweight Organic Wave Motion (Zero-cost analytical wave)
+        float waveTime = uTime * uSpeed * 0.7;
+        pos.y += sin(waveTime + pos.x * 0.3) * (0.08 + uAudioBass * 0.1);
+        pos.z += cos(waveTime + pos.y * 0.3) * (0.08 + uAudioTreble * 0.05);
         
+        // 5. Hand Repulsor/Attractor Force Field
+        if (uHandActive > 0.5) {
+            vec3 toHand = pos - uHandPos;
+            float distToHand = length(toHand);
+            float radius = 5.0;
+            
+            if (distToHand < radius && distToHand > 0.05) {
+                float force = (1.0 - distToHand / radius);
+                pos += normalize(toHand) * (uHandForce * force * 2.0);
+            }
+        }
+        
+        // 6. Shockwave Ripple
+        if (uShockwaveProgress < 1.0) {
+            vec3 toOrigin = pos - uShockwaveOrigin;
+            float dist = length(toOrigin);
+            float waveR = uShockwaveProgress * 18.0;
+            float diff = abs(dist - waveR);
+            if (diff < 2.5) {
+                float factor = (1.0 - diff / 2.5);
+                pos += normalize(toOrigin) * (factor * (1.0 - uShockwaveProgress) * 2.8);
+            }
+        }
+        
+        // 7. Depth Attenuation
         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-        vDistance = length(mvPosition.xyz);
+        float distToCam = -mvPosition.z;
         
-        // Distance-based size attenuation
-        gl_PointSize = uPointSize * (300.0 / -mvPosition.z);
+        gl_PointSize = uPointSize * (280.0 / distToCam);
+        gl_PointSize = clamp(gl_PointSize, 1.0, 48.0);
         
-        // Fade particles based on distance
-        vAlpha = smoothstep(20.0, 5.0, vDistance);
+        // Smooth distance fog
+        vAlpha = smoothstep(35.0, 4.0, length(mvPosition.xyz));
         
         gl_Position = projectionMatrix * mvPosition;
     }
 `;
 
 /**
- * Fragment Shader
- * Handles particle rendering with glow and color blending
+ * Optimized Fragment Shader
+ * Clean circular particles with soft luminous falloff and high performance
  */
 export const fragmentShader = `
     uniform vec3 uBaseColor;
     uniform vec3 uSecondaryColor;
-    uniform vec3 uAccentColor;
     uniform float uGlow;
-    uniform float uTime;
-    uniform bool uColorCycle;
+    uniform float uAudioBass;
     
     varying vec3 vColor;
-    varying float vDistance;
     varying float vAlpha;
     
     void main() {
-        // Calculate distance from center for circular particles
-        float d = distance(gl_PointCoord, vec2(0.5));
-        if (d > 0.5) discard;
+        // Fast circular point discard
+        vec2 coord = gl_PointCoord - vec2(0.5);
+        float dist = length(coord);
+        if (dist > 0.5) discard;
         
-        // Create soft edges
-        float strength = pow(1.0 - d * 2.0, 2.0);
+        // Soft gaussian-like falloff
+        float strength = (0.5 - dist) * 2.0;
+        strength = strength * strength;
         
-        // Mix colors based on distance and time
+        // Core white highlight
+        float core = max(0.0, 1.0 - dist * 4.0);
+        
+        // Color blend
         vec3 finalColor = mix(vColor, uBaseColor, 0.4);
+        finalColor = mix(finalColor, uSecondaryColor, uAudioBass * 0.3);
         
-        // Add color cycling effect
-        if (uColorCycle) {
-            float colorMix = sin(uTime * 0.5 + vDistance * 0.5) * 0.5 + 0.5;
-            finalColor = mix(finalColor, uSecondaryColor, colorMix * 0.3);
-        }
-        
-        // Apply glow and distance-based alpha
-        vec3 glowColor = finalColor * uGlow;
+        // Luminous emissive composite
+        vec3 outColor = finalColor * uGlow + vec3(core * 0.7);
         float alpha = strength * vAlpha;
         
-        gl_FragColor = vec4(glowColor, alpha);
+        gl_FragColor = vec4(outColor, alpha);
     }
 `;
 
 /**
- * Enhanced Vertex Shader with Trails Effect
- */
-export const vertexShaderTrails = `
-    uniform float uTime;
-    uniform float uMorph;
-    uniform float uPointSize;
-    uniform float uExpansion;
-    uniform float uSpeed;
-    uniform float uTrailLength;
-    
-    attribute vec3 targetPosition;
-    attribute vec3 color;
-    attribute float offset;
-    
-    varying vec3 vColor;
-    varying float vDistance;
-    varying float vAlpha;
-    varying float vTrailAlpha;
-    
-    void main() {
-        vColor = color;
-        
-        vec3 pos = mix(position, targetPosition, uMorph);
-        pos *= (1.0 + uExpansion);
-        
-        // Trail effect - offset particles in time
-        float timeOffset = uTime - offset * uTrailLength;
-        pos.y += sin(timeOffset * uSpeed * 0.5 + pos.x * 0.2) * 0.1;
-        pos.z += cos(timeOffset * uSpeed * 0.5 + pos.y * 0.2) * 0.1;
-        
-        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-        vDistance = length(mvPosition.xyz);
-        
-        gl_PointSize = uPointSize * (300.0 / -mvPosition.z);
-        
-        vAlpha = smoothstep(20.0, 5.0, vDistance);
-        vTrailAlpha = 1.0 - (offset / uTrailLength);
-        
-        gl_Position = projectionMatrix * mvPosition;
-    }
-`;
-
-/**
- * Get shader configuration
+ * Generate shader uniforms object
  */
 export function getShaderUniforms(config) {
     return {
         uTime: { value: 0 },
-        uMorph: { value: 0 },
+        uMorph: { value: 1.0 },
         uPointSize: { value: config.particles.defaultSize },
         uGlow: { value: config.material.defaultGlow },
         uExpansion: { value: 0 },
         uSpeed: { value: config.animation.defaultSpeed },
+        
+        // Hand physics
+        uHandPos: { value: new THREE.Vector3(0, 0, 0) },
+        uHandForce: { value: 0.0 },
+        uHandActive: { value: 0.0 },
+        
+        // Shockwave
+        uShockwaveProgress: { value: 1.0 },
+        uShockwaveOrigin: { value: new THREE.Vector3(0, 0, 0) },
+        
+        // Audio
+        uAudioBass: { value: 0.0 },
+        uAudioTreble: { value: 0.0 },
+        
+        // Theme Colors
         uBaseColor: { value: new THREE.Color(config.material.defaultColor) },
-        uSecondaryColor: { value: new THREE.Color(0xff00ff) },
-        uAccentColor: { value: new THREE.Color(0xffaa00) },
-        uColorCycle: { value: false },
-        uTrailLength: { value: 2.0 }
+        uSecondaryColor: { value: new THREE.Color(config.material.secondaryColor) }
     };
 }
 
 export default {
     vertexShader,
     fragmentShader,
-    vertexShaderTrails,
     getShaderUniforms
 };

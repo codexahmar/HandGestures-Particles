@@ -1,41 +1,41 @@
 // ========================================
-// AETHERIS - Configuration Module
+// AETHERIS - Core Configuration & State
 // ========================================
 
 /**
  * Application Configuration
- * Central configuration for the particle system
+ * Optimized for high performance (60 FPS) and clean professional aesthetics
  */
 export const CONFIG = {
-    // Particle Settings
+    // Particle Settings - Optimized for smooth 60 FPS
     particles: {
-        count: 15000,
-        defaultSize: 1.0,
-        minSize: 0.1,
-        maxSize: 5.0,
+        count: 8000,
+        defaultSize: 1.4,
+        minSize: 0.4,
+        maxSize: 4.0
     },
 
     // Camera Settings
     camera: {
-        fov: 60,
+        fov: 55,
         near: 0.1,
         far: 1000,
-        position: { x: 0, y: 2, z: 12 }
+        position: { x: 0, y: 1.0, z: 11.0 }
     },
 
-    // Rendering Settings
+    // Rendering Settings - Capped pixel ratio to prevent Retina GPU bottlenecks
     renderer: {
         antialias: true,
         alpha: true,
-        maxPixelRatio: 2
+        maxPixelRatio: 1.5
     },
 
     // Animation Settings
     animation: {
         defaultSpeed: 1.0,
-        morphSpeed: 0.02,
-        rotationSpeed: { y: 0.003, z: 0.001 },
-        parallaxStrength: 0.1,
+        morphSpeed: 0.03,
+        rotationSpeed: { y: 0.002, z: 0.0008 },
+        parallaxStrength: 0.08,
         parallaxSpeed: 0.05
     },
 
@@ -43,49 +43,53 @@ export const CONFIG = {
     handTracking: {
         enabled: true,
         maxHands: 1,
-        modelComplexity: 1,
-        minDetectionConfidence: 0.7,
-        minTrackingConfidence: 0.7,
-        swipeCooldown: 30,
-        swipeThreshold: 0.1,
-        pinchThreshold: 0.05,
-        openPalmThreshold: 0.4,
-        expansionAmount: { open: 1.2, closed: -0.5 },
-        sizeChange: { open: 2.5, closed: 0.5 },
+        modelComplexity: 0, // 0 = Lite (Fastest & lowest CPU load), 1 = Full
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6,
+        swipeCooldown: 25,
+        swipeThreshold: 0.09,
+        pinchThreshold: 0.055,
+        openPalmThreshold: 0.38,
+        fistThreshold: 0.22,
+        expansionAmount: { open: 1.4, closed: -0.7 },
+        sizeChange: { open: 2.0, closed: 0.6 },
         followSpeed: 0.1,
-        followScale: { x: 15, y: 10 }
+        followScale: { x: 12, y: 8, z: 6 },
+        smoothing: 0.3
     },
 
-    // Material Settings
+    // Material Defaults
     material: {
-        defaultGlow: 1.5,
-        minGlow: 0.3,
-        maxGlow: 3.0,
-        defaultColor: 0x00f2ff,
-        blending: 'additive',
-        transparent: true,
-        depthWrite: false
+        defaultGlow: 1.8,
+        minGlow: 0.5,
+        maxGlow: 3.5,
+        defaultColor: 0x38bdf8,   // Refined Sky Blue
+        secondaryColor: 0x818cf8, // Soft Indigo
+        accentColor: 0xf43f5e     // Coral Rose
+    },
+
+    // Audio Reactivity
+    audio: {
+        fftSize: 128,
+        smoothingTimeConstant: 0.8,
+        bassSensitivity: 1.4,
+        trebleSensitivity: 1.0
+    },
+
+    // Recording Settings
+    recording: {
+        fps: 60,
+        videoBitsPerSecond: 6000000
     },
 
     // UI Settings
     ui: {
-        updateInterval: 100, // ms for FPS counter
-        collapsible: true,
-        videoPreviewOpacity: 0.6
-    },
-
-    // Performance Settings
-    performance: {
-        targetFPS: 60,
-        autoOptimize: true,
-        lowFPSThreshold: 30,
-        reducedParticleCount: 8000
+        updateInterval: 120
     }
 };
 
 /**
- * Application State
- * Mutable state for runtime values
+ * Mutable Application State
  */
 export class AppState {
     constructor() {
@@ -95,21 +99,25 @@ export class AppState {
         this.handActive = false;
         this.lastHandX = 0;
         this.swipeCooldown = 0;
-        this.isPaused = false;
         this.cameraEnabled = true;
         this.fps = 60;
         this.time = 0;
         this.mouse = { x: 0, y: 0 };
         this.colors = {
             primary: CONFIG.material.defaultColor,
-            secondary: 0xff00ff,
-            accent: 0xffaa00
+            secondary: CONFIG.material.secondaryColor,
+            accent: CONFIG.material.accentColor
         };
+
+        // Interaction State
+        this.isRecording = false;
+        this.recordingTime = 0;
+        this.shockwaveProgress = 1.0;
+        this.audioActive = false;
+        this.audioBass = 0.0;
+        this.audioTreble = 0.0;
     }
 
-    /**
-     * Reset state to defaults
-     */
     reset() {
         this.currentTemplate = 'galaxy';
         this.morphProgress = 1.0;
@@ -117,16 +125,14 @@ export class AppState {
         this.handActive = false;
         this.lastHandX = 0;
         this.swipeCooldown = 0;
+        this.shockwaveProgress = 1.0;
         this.colors = {
             primary: CONFIG.material.defaultColor,
-            secondary: 0xff00ff,
-            accent: 0xffaa00
+            secondary: CONFIG.material.secondaryColor,
+            accent: CONFIG.material.accentColor
         };
     }
 
-    /**
-     * Update swipe cooldown
-     */
     updateCooldown() {
         if (this.swipeCooldown > 0) {
             this.swipeCooldown--;
